@@ -1,0 +1,147 @@
+//META{"name":"CustomPlugin","displayName":"Custom Plugin","website":"https://github.com/yourusername/yourrepo","source":"https://github.com/yourusername/yourrepo/blob/main/CustomPlugin.plugin.js"}*//
+var CustomPlugin = (() => {
+    const config = {
+        info: {
+            name: "Custom Plugin",
+            authors: [
+                {
+                    name: "Your Name",
+                    discord_id: "YourDiscordID",
+                },
+            ],
+            version: "1.0.0",
+            description: "Custom BetterDiscord plugin with animation, rich presence, and image upload.",
+        },
+    };
+
+    return !global.ZeresPluginLibrary ? class {
+        constructor() {
+            this._config = config;
+        }
+
+        getName() {
+            return config.info.name;
+        }
+
+        getAuthor() {
+            return config.info.authors.map(author => author.name).join(", ");
+        }
+
+        getVersion() {
+            return config.info.version;
+        }
+
+        getDescription() {
+            return config.info.description;
+        }
+
+        load() {
+            BdApi.showConfirmationModal(
+                "Library Missing",
+                `The library plugin needed for ${config.info.name} is missing. Would you like to download and install it?`,
+                {
+                    confirmText: "Download",
+                    cancelText: "Cancel",
+                    onConfirm: () => {
+                        require("request").get("https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js", async (error, response, body) => {
+                            if (error)
+                                return require("electron").shell.openExternal("https://betterdiscordlibrary.com/download?id=1577");
+                            await new Promise(r => require("fs").writeFile(require("path").join(BdApi.Plugins.folder, "0PluginLibrary.plugin.js"), body, r));
+                        });
+                    }
+                }
+            );
+        }
+
+        start() { }
+
+        stop() { }
+    } : (([Plugin, Library]) => {
+        const { DiscordModules, WebpackModules, Patcher, PluginUtilities } = Library;
+        const { React } = DiscordModules;
+
+        class CustomPlugin extends Plugin {
+            onStart() {
+                this.addButton();
+                this.addRichPresence();
+            }
+
+            onStop() {
+                this.removeButton();
+                this.clearRichPresence();
+            }
+
+            addButton() {
+                const buttonContainer = document.querySelector('.toolbar-2DLf6g .container-1ov-mD');
+                if (!buttonContainer) return;
+
+                this.customButton = document.createElement('button');
+                this.customButton.className = 'button-38aScr custom-button';
+                this.customButton.innerText = 'Custom Button';
+
+                this.customButton.addEventListener('click', () => {
+                    const textArea = document.querySelector('.textArea-12jD-V textarea');
+                    if (textArea) {
+                        textArea.value = 'Hello, Discord!';
+                    }
+                });
+
+                const fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.accept = 'image/*';
+                fileInput.style.display = 'none';
+
+                fileInput.addEventListener('change', (event) => {
+                    const file = event.target.files[0];
+                    if (file) {
+                        this.uploadImage(file);
+                    }
+                });
+
+                this.customButton.addEventListener('contextmenu', (event) => {
+                    event.preventDefault();
+                    fileInput.click();
+                });
+
+                buttonContainer.appendChild(this.customButton);
+            }
+
+            removeButton() {
+                if (this.customButton) {
+                    this.customButton.remove();
+                }
+            }
+
+            uploadImage(file) {
+                // Implement your image upload logic here
+                console.log('Uploading image:', file.name);
+            }
+
+            addRichPresence() {
+                const presenceData = {
+                    state: "Custom State",
+                    details: "Custom Details",
+                    startTimestamp: Date.now(),
+                    largeImageKey: "large_image_key",
+                    largeImageText: "Large Image Text",
+                    smallImageKey: "small_image_key",
+                    smallImageText: "Small Image Text",
+                };
+
+                const presenceModule = WebpackModules.getByProps('setActivity');
+                presenceModule.setActivity(presenceData);
+            }
+
+            clearRichPresence() {
+                const presenceModule = WebpackModules.getByProps('clearActivity');
+                presenceModule.clearActivity();
+            }
+
+            getSettingsPanel() {
+                return "Settings Panel Content";
+            }
+        }
+
+        return CustomPlugin;
+    })(global.ZeresPluginLibrary.buildPlugin(config));
+})();
